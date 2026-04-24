@@ -1,5 +1,7 @@
 import os
 import logging
+# Добавляем импорт HTTPXRequest
+from telegram.request import HTTPXRequest 
 from telegram import (
     Update,
     ReplyKeyboardMarkup,
@@ -103,13 +105,24 @@ async def preview_ad(update: Update, context: ContextTypes.DEFAULT_TYPE, ad, own
     await context.bot.send_message(owner_id, "Отправить на модерацию?")
 
 def main():
-    app = Application.builder().token(BOT_TOKEN).build()
+    # 1. Создаем объект запроса с увеличенными таймаутами (30 секунд вместо 5)
+    # Это решит проблему с ConnectTimeout в Docker
+    trequest = HTTPXRequest(
+        connection_pool_size=20, 
+        read_timeout=30.0, 
+        write_timeout=30.0, 
+        connect_timeout=30.0, 
+        pool_timeout=30.0
+    )
+
+    # 2. Передаем настройки в builder через .request()
+    app = Application.builder().token(BOT_TOKEN).request(trequest).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
 
-    print("Bot started")
+    print("Bot started with custom timeouts")
     app.run_polling()
 
 if __name__ == "__main__":
